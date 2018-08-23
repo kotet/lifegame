@@ -1,0 +1,11 @@
+{
+	"name": "lifegame",
+	"authors": [
+		"kotet"
+	],
+	"description": "Conway's lifegame imprementation",
+	"copyright": "Copyright © 2018, kotet",
+	"license": "MIT",
+	"targetPath": "build",
+	"workingDirectory": "build"
+}
