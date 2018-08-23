@@ -5,122 +5,76 @@ enum LOWER = "▄";
 
 void main(string[] args)
 {
-	version (unittest)
-		return;
-	else
+	import std.stdio;
+	import core.thread : Thread;
+	import std.datetime : dur;
+	import std.getopt : getopt, defaultGetoptPrinter;
+	import std.conv : to;
+	import reference;
+
+	size_t width = 20;
+	size_t height = 20;
+	size_t delay = 16;
+
+	auto helpInformation = getopt(args, "width", &width, "height", &height, "delay", &delay);
+	if (helpInformation.helpWanted)
 	{
-		import std.stdio;
-		import core.thread : Thread;
-		import std.datetime : dur;
-		import std.random : choice;
-		import std.getopt : getopt, defaultGetoptPrinter;
-		import std.range : zip, join;
-		import std.algorithm : map;
-		import std.typecons : Tuple;
-		import std.conv : to;
+		defaultGetoptPrinter("Conway's lifegame.", helpInformation.options);
+		return;
+	}
 
-		size_t width = 20;
-		size_t height = 20;
-		string data_filename = "";
-		size_t delay = 100;
+	auto lg = LifeGameReference(width, height);
 
-		auto helpInformation = getopt(args, "width", &width, "height",
-				&height, "data", &data_filename, "delay", &delay);
-		if (helpInformation.helpWanted)
+	// グライダー
+	lg.set(0, 1, true);
+	lg.set(1, 2, true);
+	lg.set(2, 0, true);
+	lg.set(2, 1, true);
+	lg.set(2, 2, true);
+
+	write(CLEAR);
+
+	while (true)
+	{
+		auto table = lg.dump();
+		if (table.length % 2 == 1)
 		{
-			defaultGetoptPrinter("Conway's lifegame.", helpInformation.options);
-			return;
+			table ~= new bool[](table[0].length);
 		}
 
-		ubyte[][] table = new ubyte[][](height + 2, width + 2);
-		ubyte[][] next = new ubyte[][](height + 2, width + 2);
+		lg.next();
 
-		// グライダー
-		table[1][2] = 1;
-		table[2][3] = 1;
-		table[3][1] = 1;
-		table[3][2] = 1;
-		table[3][3] = 1;
-
-		// foreach (ref row; table[1 .. $ - 1])
-		// 	foreach (ref cell; row[1 .. $ - 1])
-		// 	{
-		// 		cell = choice(cast(ubyte[])[0, 1]);
-		// 	}
-
-		write(CLEAR ~ CLEAR);
-
-		while (true)
+		string result = "\033[" ~ ((height + 3) / 2).to!string ~ "A";
+		foreach (y; 0 .. (height + 1) / 2)
 		{
-			table[0][] = table[$ - 2][];
-			table[$ - 1][] = table[1][];
-			foreach (ref r; table)
-			{
-				r[0] = r[$ - 2];
-				r[$ - 1] = r[1];
-			}
-			table[0][0] = table[$ - 2][$ - 2];
-			table[$ - 1][$ - 1] = table[1][1];
-
-			foreach (x; 1 .. width + 1)
-				foreach (y; 1 .. height + 1)
+			foreach (x; 0 .. width)
+				if (table[y * 2][x] == 1)
 				{
-					auto cnt = table[y - 1][x - 1] + table[y - 1][x]
-						+ table[y - 1][x + 1] + table[y][x - 1]
-						+ table[y][x + 1] + table[y + 1][x - 1] + table[y + 1][x]
-						+ table[y + 1][x + 1];
-
-					if (table[y][x] == 0)
-					{
-						if (cnt == 3)
-							next[y][x] = 1;
-						else
-							next[y][x] = 0;
-					}
-					else if (2 <= cnt && cnt <= 3)
-					{
-						next[y][x] = 1;
-					}
-					else
-					{
-						next[y][x] = 0;
-					}
-				}
-
-			string result = "\033[" ~ ((height + 3) / 2).to!string ~ "A";
-			foreach (y; 0 .. (height + 1) / 2)
-			{
-				foreach (x; 1 .. width + 1)
 					if (table[y * 2 + 1][x] == 1)
 					{
-						if (table[y * 2 + 2][x] == 1)
-						{
-							result ~= BLOCK;
-						}
-						else
-						{
-							result ~= UPPER;
-						}
+						result ~= BLOCK;
 					}
 					else
 					{
-						if (table[y * 2 + 2][x] == 1)
-						{
-							result ~= LOWER;
-						}
-						else
-						{
-							result ~= "_";
-						}
+						result ~= UPPER;
 					}
-				result ~= "\n";
-			}
-			result.writeln;
-			stdout.flush();
-
-			foreach (i, ref r; table)
-				r[] = next[i][];
-			Thread.sleep(dur!"msecs"(delay));
+				}
+				else
+				{
+					if (table[y * 2 + 1][x] == 1)
+					{
+						result ~= LOWER;
+					}
+					else
+					{
+						result ~= ".";
+					}
+				}
+			result ~= "\n";
 		}
+		result.writeln;
+		stdout.flush();
+
+		Thread.sleep(dur!"msecs"(delay));
 	}
 }
